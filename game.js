@@ -15,7 +15,7 @@ const LOOK_SPEED = 0.075;
 const SIZE = 100;
 
 //Control
-var controlsEnabled = true;
+var controlsEnabled = false;
 var moveForward = false;
 var moveBackward = false;
 var moveLeft = false;
@@ -28,8 +28,6 @@ var colObjects = [];
 
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
-
-
 
 
 function maze(x,y) {
@@ -68,9 +66,6 @@ function maze(x,y) {
 }
 
 function init() {
-	// Ask the browser to lock the pointer
-	main.requestPointerLock = main.requestPointerLock || main.mozRequestPointerLock || main.webkitRequestPointerLock;
-	main.requestPointerLock();
 		
 	scene = new THREE.Scene();
 	scene.fog = new THREE.FogExp2(0xD6F1FF, 0.0004);
@@ -172,6 +167,9 @@ function init() {
 	}
 	
 	var onKeyDown = function ( event ) {
+		if(!controlsEnabled) {
+			start(false);
+		}
 		switch ( event.keyCode ) {
 			case 38: // up
 			case 87: // w
@@ -218,10 +216,34 @@ function init() {
 	document.addEventListener( 'keydown', onKeyDown, false );
 	document.addEventListener( 'keyup', onKeyUp, false );
 	
+	window.addEventListener( 'resize', onWindowResize, false );
+	
+
+	var element = document.body;
+	element.addEventListener('click', start, false);
+	
+	
 	renderer.domElement.style.backgroundColor = '#D6F1FF'; // easier to see
 	document.body.appendChild(renderer.domElement);
 	
 	animate();
+}
+
+function start(event) {
+	var element = document.body;
+	element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+	element.requestPointerLock();
+	controls.enabled = true;
+	controlsEnabled = true;
+
+}
+
+function onWindowResize() {
+
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
 }
 
 function distance(x1, y1, x2, y2) {
@@ -239,16 +261,13 @@ function detectCollision(position) {
 	var rayCaster = new THREE.Raycaster(controls.getObject().position, cameraDirection);  
 
 	var col = false;
-	for(var i = 0; i < colObjects.length; i++) {
-		var intersects = rayCaster.intersectObject(colObjects[i], true);  
+	var intersects = rayCaster.intersectObjects(colObjects, true);  
 
 
-		if ((intersects.length > 0 && intersects[0].distance < 50)) {
+	if ((intersects.length > 0 && intersects[0].distance < 50)) {
 
-			console.log("COL");
-			col = true;
-			break;
-		}
+		console.log("COL");
+		col = true;
 	}
 	return col;
 }
