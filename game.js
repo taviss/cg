@@ -1,64 +1,36 @@
 var mapWidth = 10, mapLength = 10;
-	
+
+//
 var scene, camera, controls, clock;
 var renderer;
 
 var prevTime = performance.now();
 var velocity = new THREE.Vector3();
 
+//Viteza de miscare
 const MOVE_SPEED = 100;
+//Senzitivitatea mouse-ului
 const LOOK_SPEED = 0.075;
+//Marimea unei unitati(folosita la ziduri)
 const SIZE = 100;
 
-var controlsEnabled = false;
+//Control
+var controlsEnabled = true;
 var moveForward = false;
 var moveBackward = false;
 var moveLeft = false;
 var moveRight = false;
 var canJump = false;
 
-var blocker = document.getElementById( 'blocker' );
-var instructions = document.getElementById( 'instructions' );
+var main = document.getElementById('main');
 
 var colObjects = [];
 
-var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in'webkitPointerLockElement' in document;
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
 
-if ( havePointerLock ) {
-	var element = document.body;
-	var pointerlockchange = function ( event ) {
-		if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
-			controlsEnabled = true;
-			controls.enabled = true;
-			blocker.style.display = 'none';
-		} else {
-			controls.enabled = false;
-			blocker.style.display = '-webkit-box';
-			blocker.style.display = '-moz-box';
-			blocker.style.display = 'box';
-			instructions.style.display = '';
-		}	
-	};
-		
-	var pointerlockerror = function ( event ) {
-		instructions.style.display = '';
-	};
-	
-	// Hook pointer lock state change events
-	document.addEventListener( 'pointerlockchange', pointerlockchange, false );
-	document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
-	document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
-	document.addEventListener( 'pointerlockerror', pointerlockerror, false );
-	document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
-	document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
-	
-	instructions.addEventListener( 'click', function ( event ) {
-		instructions.style.display = 'none';
-		// Ask the browser to lock the pointer
-		element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
-		element.requestPointerLock();
-	}, false );
-}
+
+
 
 function maze(x,y) {
     var n=x*y-1;
@@ -96,8 +68,12 @@ function maze(x,y) {
 }
 
 function init() {
+	// Ask the browser to lock the pointer
+	main.requestPointerLock = main.requestPointerLock || main.mozRequestPointerLock || main.webkitRequestPointerLock;
+	main.requestPointerLock();
+		
 	scene = new THREE.Scene();
-	scene.fog = new THREE.FogExp2(0xD6F1FF, 0.0004); // color, density
+	scene.fog = new THREE.FogExp2(0xD6F1FF, 0.0004);
 	
 	camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 10000);
 	scene.add(camera);
@@ -111,16 +87,12 @@ function init() {
 	THREE.ImageUtils.crossOrigin = '';
 	var floor = new THREE.Mesh(
 			new THREE.CubeGeometry(mapWidth * SIZE * 3, 50, mapWidth * SIZE * 7),
-			new THREE.MeshLambertMaterial({color: 0xEDCBA0, map: THREE.ImageUtils.loadTexture('textures/lava/lavatile.jpg')})
+			new THREE.MeshLambertMaterial({color: 0xEDCBA0, /*map: THREE.ImageUtils.loadTexture('textures/lava/lavatile.jpg')*/})
 	);
 	scene.add(floor);
 	
 	renderer = new THREE.WebGLRenderer();
 	renderer.setSize(window.innerWidth, window.innerHeight);
-	
-	var axes = new THREE.AxisHelper(250);
-	axes.position.y += 50;
-	scene.add( axes );
 	
 	var imagePrefix = "textures/sky/upt/";
 	var directions  = ["posx", "negx", "zh", "negy", "posz", "negz"];
@@ -130,7 +102,8 @@ function init() {
 	var materialArray = [];
 	for (var i = 0; i < 6; i++)
 		materialArray.push( new THREE.MeshBasicMaterial({
-			map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
+			color: 0xFF0000,
+			//map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
 			side: THREE.BackSide
 		}));
 	var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
@@ -145,10 +118,10 @@ function init() {
 
 	var cube = new THREE.CubeGeometry(SIZE, wallHeight, SIZE);
 	var materials = [
-	                 new THREE.MeshLambertMaterial({map: THREE.ImageUtils.loadTexture('textures/math/math1.jpg')}),
-	                 new THREE.MeshLambertMaterial({map: THREE.ImageUtils.loadTexture('textures/math/math2.jpg')}),
-	                 new THREE.MeshLambertMaterial({map: THREE.ImageUtils.loadTexture('textures/math/math3.jpg')}),
-					 new THREE.MeshLambertMaterial({map: THREE.ImageUtils.loadTexture('textures/math/math4.jpg')}),
+	                 new THREE.MeshLambertMaterial({color: 0xFF0000, /*map: THREE.ImageUtils.loadTexture('textures/math/math1.jpg')*/}),
+	                 new THREE.MeshLambertMaterial({color: 0xFF00FF, /*map: THREE.ImageUtils.loadTexture('textures/math/math2.jpg')*/}),
+	                 new THREE.MeshLambertMaterial({color: 0xFFAB00, /*map: THREE.ImageUtils.loadTexture('textures/math/math3.jpg')*/}),
+					 new THREE.MeshLambertMaterial({color: 0xFCCF00, /*map: THREE.ImageUtils.loadTexture('textures/math/math4.jpg')*/}),
 	                 ];
 	
 	var m = maze(10, 10);
@@ -197,18 +170,6 @@ function init() {
 		if (0 == j) line[1]= line[2]= line[3]= ' ';
 		if (m.x*2-1 == j) line[4*m.y]= ' ';
 	}
-	/*
-	for (var i = 0; i < mapWidth; i++) {
-		for (var j = 0, m = map[i].length; j < m; j++) {
-			if (map[i][j]) {
-				var wall = new THREE.Mesh(cube, materials[0]);
-				wall.position.x = (i - mapWidth/2) * SIZE;
-				wall.position.y = wallHeight/2;
-				wall.position.z = (j - mapWidth/2) * SIZE;
-				scene.add(wall);
-			}
-		}
-	}*/
 	
 	var onKeyDown = function ( event ) {
 		switch ( event.keyCode ) {
@@ -263,48 +224,76 @@ function init() {
 	animate();
 }
 
+function distance(x1, y1, x2, y2) {
+	return Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
+}
+
 function animate () {
-  // Schedule the next frame.
   requestAnimationFrame(animate);
-  
   render();
-  
-  //controls.update(clock.getDelta());
+}
+
+function detectCollision(position) {
+	var cameraDirection = controls.getDirection(new THREE.Vector3(0, 0, 0)).clone();
+
+	var rayCaster = new THREE.Raycaster(controls.getObject().position, cameraDirection);  
+
+	var col = false;
+	for(var i = 0; i < colObjects.length; i++) {
+		var intersects = rayCaster.intersectObject(colObjects[i], true);  
+
+
+		if ((intersects.length > 0 && intersects[0].distance < 50)) {
+
+			console.log("COL");
+			col = true;
+			break;
+		}
+	}
+	return col;
 }
 
 function render() {
 	if ( controlsEnabled ) {
-		var cameraDirection = controls.getDirection(new THREE.Vector3(0, 0, 0)).clone();
-		var rayCaster = new THREE.Raycaster(controls.getObject().position, cameraDirection);    
-		var intersects = rayCaster.intersectObject(colObjects);
-		
-		if ((intersects.length > 0 && intersects[0].distance < 25)) {
-			console.log("YEY");
-		}
-		
 		var time = performance.now();
 		var delta = ( time - prevTime ) / 1000;
+			
 		velocity.x -= velocity.x * 1.0 * delta;
 		velocity.z -= velocity.z * 1.0 * delta;
 		velocity.y -= 1.8 * 100.0 * delta; // 100.0 = mass
+			
+
 		if ( moveForward ) velocity.z -= 400.0 * delta;
 		if ( moveBackward ) velocity.z += 400.0 * delta;
 		if ( moveLeft ) velocity.x -= 400.0 * delta;
 		if ( moveRight ) velocity.x += 400.0 * delta;
-		/*if ( isOnObject === true ) {
-			velocity.y = Math.max( 0, velocity.y );
-			canJump = true;
-		}*/
-		controls.getObject().translateX( velocity.x * delta );
-		controls.getObject().translateY( velocity.y * delta );
-		controls.getObject().translateZ( velocity.z * delta );
+			
+		
+		var pos = controls.getObject().position.clone();
+		console.log(pos);
+		pos.x += velocity.x*delta;
+		pos.y += velocity.y*delta;
+		pos.z += velocity.z*delta;
+		console.log(pos);
+		
+		
+		if(!detectCollision(pos)) {
+			controls.getObject().translateX( velocity.x * delta );
+			controls.getObject().translateY( velocity.y * delta );
+			controls.getObject().translateZ( velocity.z * delta );
+			if ( controls.getObject().position.y < 10 ) {
+				velocity.y = 0;
+				controls.getObject().position.y = 10;
+				canJump = true;
+			}
 
-		if ( controls.getObject().position.y < 10 ) {
+		} else {
+			velocity.x = 0;
+			velocity.z = 0;
 			velocity.y = 0;
-			controls.getObject().position.y = 10;
-			canJump = true;
 		}
 		prevTime = time;
+		
 	}
 	renderer.render(scene, camera);
 	//controls.update(clock.getDelta());
